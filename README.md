@@ -118,4 +118,13 @@ pytest -m integration
 
 ## Baseline entities
 
-The first migration creates controlled references (`exams`, `boards`, `states`, `categories`, `institution_types`, `courses`, and `branches`), institutions/campuses/programs, counselling authorities and admission cycles, immutable catalog releases, official data sources, source documents and versions, ingestion runs, and release-to-source evidence links. It intentionally excludes student, recommendation, ranking, rule-execution, scholarship, and real dataset records until their implementation phases.
+The first migration creates controlled references (`exams`, `boards`, `states`, `categories`, `institution_types`, `courses`, and `branches`), institutions/campuses/programs, counselling authorities and admission cycles, immutable catalog releases, official data sources, source documents and versions, ingestion runs, and release-to-source evidence links. The Phase 3 migration adds canonical admission, scholarship, official-link, provenance, and staged-record structures.
+
+Run a bounded local structured-data import with:
+
+    .\.venv\Scripts\python.exe -m scholarroute.application.ingestion josaa backend/tests/fixtures/josaa_2025_test.csv --year 2025 --source-url https://josaa.nic.in/test/2025.csv --title "JoSAA deterministic test fixture"
+
+The Phase 3 ingestion entry point supports deterministic CSV, JSON, and XLSX input,
+records source provenance and official links, rejects invalid records, and reuses an
+existing run when the same source checksum is imported again. Repository fixtures
+are clearly labeled test data and are not production catalog data.

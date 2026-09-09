@@ -17,6 +17,9 @@ dependencies = [
   "uvicorn[standard]>=0.52,<1",
 ]
 
+[project.scripts]
+scholarroute-ingest = "scholarroute.application.ingestion.__main__:main"
+
 [project.optional-dependencies]
 dev = [
   "httpx>=0.28,<1",
@@ -63,4 +66,3 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = "backend.tests.*"
 disallow_untyped_defs = false
-

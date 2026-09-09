@@ -21,7 +21,24 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from scholarroute.infrastructure.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from scholarroute.infrastructure.db.models.catalog import CatalogRelease
-from scholarroute.infrastructure.db.models.enums import DataSourceType, IngestionRunStatus
+from scholarroute.infrastructure.db.models.enums import (
+    DataSourceType,
+    FindingSeverity,
+    IngestionRunStatus,
+    RecordStatus,
+    StagedRecordStatus,
+)
+
+
+class SourceAuthority(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "source_authorities"
+
+    code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    official_domain: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    status: Mapped[RecordStatus] = mapped_column(
+        Enum(RecordStatus, name="record_status"), default=RecordStatus.ACTIVE, nullable=False
+    )
 
 
 class DataSource(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -31,6 +48,9 @@ class DataSource(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     authority_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    authority_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("source_authorities.id"), index=True
+    )
     canonical_url: Mapped[str] = mapped_column(String(2048), unique=True, nullable=False)
     source_type: Mapped[DataSourceType] = mapped_column(
         Enum(DataSourceType, name="data_source_type"), nullable=False
@@ -109,6 +129,17 @@ class IngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     trigger: Mapped[str] = mapped_column(String(64), nullable=False)
     connector_version: Mapped[str] = mapped_column(String(64), nullable=False)
     parser_version: Mapped[str | None] = mapped_column(String(64))
+    source_document_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("source_document_versions.id"), index=True
+    )
+    academic_year: Mapped[int | None] = mapped_column(SmallInteger)
+    source_filename: Mapped[str | None] = mapped_column(String(500))
+    checksum: Mapped[str | None] = mapped_column(String(64))
+    records_discovered: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    records_parsed: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    records_validated: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    records_published: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    records_rejected: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
     status: Mapped[IngestionRunStatus] = mapped_column(
         Enum(IngestionRunStatus, name="ingestion_run_status"),
         default=IngestionRunStatus.RECEIVED,
@@ -120,6 +151,46 @@ class IngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     error_summary: Mapped[str | None] = mapped_column(Text)
 
     data_source: Mapped[DataSource] = relationship()
+
+
+class StagedRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "staged_records"
+    __table_args__ = (
+        UniqueConstraint("ingestion_run_id", "record_key"),
+        Index("ix_staged_records_run_status", "ingestion_run_id", "status"),
+    )
+
+    ingestion_run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("ingestion_runs.id"), nullable=False, index=True
+    )
+    entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    normalized_payload: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    source_locator: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[StagedRecordStatus] = mapped_column(
+        Enum(StagedRecordStatus, name="staged_record_status"),
+        default=StagedRecordStatus.RAW,
+        nullable=False,
+    )
+    published_entity_id: Mapped[UUID | None] = mapped_column()
+
+
+class ValidationFinding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "validation_findings"
+    __table_args__ = (
+        Index("ix_validation_findings_record_severity", "staged_record_id", "severity"),
+    )
+
+    staged_record_id: Mapped[UUID] = mapped_column(
+        ForeignKey("staged_records.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[FindingSeverity] = mapped_column(
+        Enum(FindingSeverity, name="finding_severity"), nullable=False
+    )
+    field_name: Mapped[str | None] = mapped_column(String(128))
+    message: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class ReleaseSourceVersion(Base):

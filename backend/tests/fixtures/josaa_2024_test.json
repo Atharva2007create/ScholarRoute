@@ -1,0 +1,35 @@
+{
+  "records": [
+    {
+      "institution_code": "TEST-IIT-DL",
+      "institution_name": "ScholarRoute Test Institute Delhi",
+      "institution_type_code": "IIT",
+      "state": "DL",
+      "ownership_type": "PUBLIC",
+      "course_code": "BTECH",
+      "branch_code": "CSE",
+      "branch_name": "Computer Science and Engineering",
+      "program_code": "TEST-IIT-DL-CSE",
+      "program_name": "B.Tech Computer Science and Engineering",
+      "exam_code": "JEE_MAIN",
+      "authority_code": "JOSAA",
+      "authority_name": "Joint Seat Allocation Authority",
+      "academic_year": 2024,
+      "round_code": "R1",
+      "round_name": "Round 1",
+      "round_sequence": 1,
+      "quota": "AI",
+      "category": "OPEN",
+      "gender_pool": "NEUTRAL",
+      "seat_type_code": "REGULAR",
+      "rank_type": "CRL",
+      "opening_rank": 120,
+      "closing_rank": 520,
+      "seat_count": 75,
+      "institution_url": "https://home.iitd.ac.in",
+      "admissions_url": "https://home.iitd.ac.in/admissions",
+      "counselling_url": "https://josaa.nic.in",
+      "source_locator": "josaa-2024!record:1"
+    }
+  ]
+}

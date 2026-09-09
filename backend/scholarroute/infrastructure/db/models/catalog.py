@@ -39,6 +39,12 @@ class CodedReferenceMixin(UUIDPrimaryKeyMixin, TimestampMixin):
 class Exam(CodedReferenceMixin, Base):
     __tablename__ = "exams"
 
+    exam_type_id: Mapped[UUID | None] = mapped_column(ForeignKey("exam_types.id"), index=True)
+
+
+class ExamType(CodedReferenceMixin, Base):
+    __tablename__ = "exam_types"
+
 
 class Board(CodedReferenceMixin, Base):
     __tablename__ = "boards"
@@ -69,6 +75,37 @@ class Branch(CodedReferenceMixin, Base):
     course: Mapped[Course] = relationship()
 
 
+class Degree(CodedReferenceMixin, Base):
+    __tablename__ = "degrees"
+
+
+class Subject(CodedReferenceMixin, Base):
+    __tablename__ = "subjects"
+
+
+class QuotaType(CodedReferenceMixin, Base):
+    __tablename__ = "quota_types"
+
+
+class GenderPool(CodedReferenceMixin, Base):
+    __tablename__ = "gender_pools"
+
+
+class SeatType(CodedReferenceMixin, Base):
+    __tablename__ = "seat_types"
+
+
+class AcademicYear(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "academic_years"
+    __table_args__ = (CheckConstraint("year >= 2000 AND year <= 2100", name="year_range"),)
+
+    year: Mapped[int] = mapped_column(SmallInteger, unique=True, nullable=False)
+    label: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[RecordStatus] = mapped_column(
+        Enum(RecordStatus, name="record_status"), default=RecordStatus.ACTIVE, nullable=False
+    )
+
+
 class Institution(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "institutions"
 
@@ -79,6 +116,8 @@ class Institution(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     state_id: Mapped[UUID] = mapped_column(ForeignKey("states.id"), nullable=False, index=True)
     official_url: Mapped[str | None] = mapped_column(String(2048))
+    official_identifier: Mapped[str | None] = mapped_column(String(128))
+    ownership_type: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[RecordStatus] = mapped_column(
         Enum(RecordStatus, name="record_status"), default=RecordStatus.ACTIVE, nullable=False
     )
@@ -115,6 +154,7 @@ class Program(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     campus_id: Mapped[UUID | None] = mapped_column(ForeignKey("campuses.id"), index=True)
     course_id: Mapped[UUID] = mapped_column(ForeignKey("courses.id"), nullable=False, index=True)
     branch_id: Mapped[UUID | None] = mapped_column(ForeignKey("branches.id"), index=True)
+    degree_id: Mapped[UUID | None] = mapped_column(ForeignKey("degrees.id"), index=True)
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[RecordStatus] = mapped_column(
@@ -125,6 +165,7 @@ class Program(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     campus: Mapped[Campus | None] = relationship()
     course: Mapped[Course] = relationship()
     branch: Mapped[Branch | None] = relationship()
+    degree: Mapped[Degree | None] = relationship()
 
 
 class CounsellingAuthority(UUIDPrimaryKeyMixin, TimestampMixin, Base):

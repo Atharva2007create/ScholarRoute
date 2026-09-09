@@ -107,3 +107,23 @@ Use PostgreSQL advisory locks or unique run constraints initially. Add a dedicat
 ## Operational acceptance criteria
 
 A release is publishable only when all required documents have immutable snapshots, all material fields resolve to evidence, blocking findings equal zero, rule test cases pass, anomalies have dispositions, and an authorized reviewer approves the release.
+
+## Phase 3 deterministic local ingestion
+
+The developer entry point is:
+
+    python -m scholarroute.application.ingestion <josaa|mcc|scholarship> <file> --year 2025 --source-url https://official.example/file --title "Official dataset title"
+
+CSV, JSON, and XLSX files are parsed deterministically. XLSX support uses the
+standard-library ZIP/XML reader and therefore has no additional runtime dependency.
+The command creates an idempotent ingestion run keyed by source, dataset kind,
+academic year, and SHA-256 checksum. It persists raw and normalized payloads,
+validation findings, source-document evidence, and accepted canonical records.
+
+The initial bounded fixtures are deliberately marked as deterministic test data:
+backend/tests/fixtures/josaa_2025_test.csv,
+backend/tests/fixtures/neet_2025_test.json, and
+backend/tests/fixtures/scholarships_2025_test.xlsx. They model official source
+shapes without claiming to be production datasets. New source adapters implement
+the importer contract and must provide deterministic parsing, normalization, and
+validation; publication remains controlled by the ingestion service.

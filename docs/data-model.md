@@ -145,3 +145,23 @@ erDiagram
 ## Migration and compatibility policy
 
 Use Alembic, review generated migrations, and apply expand/migrate/contract changes across releases. Seed only stable controlled vocabularies through migrations. Domain datasets use ingestion releases, not migration scripts. Never delete a published fact required to reproduce a historical recommendation.
+
+## Phase 3 canonical implementation
+
+The Phase 3 migration adds controlled vocabularies for exam types, degrees, subjects,
+quotas, gender pools, seat types, and academic years. Admission facts are represented
+by counselling rounds, program offerings, cutoff observations, seat matrices, fees,
+and year-scoped admission requirements. Scholarship data is represented by providers,
+schemes, year/rule-version cycles, structured eligibility-rule data, benefits, and
+required documents.
+
+The reusable official-link entity is named resource_links. It stores the target entity
+type and ID, link type, URL, applicable year, source authority, verification time,
+and source document version, so recommendation responses can retrieve official
+institution, program, counselling, scholarship, application, and guideline links
+without a new search.
+
+staged_records and validation_findings provide the explicit
+RAW -> PARSED -> NORMALIZED -> VALIDATED -> PUBLISHED or REJECTED lifecycle.
+Published facts retain the source document version and source locator. Historical
+years use independent admission/scholarship cycles and observations.
