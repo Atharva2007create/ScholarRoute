@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: scholarroute
+      POSTGRES_PASSWORD: scholarroute
+      POSTGRES_DB: scholarroute
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scholarroute -d scholarroute"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - scholarroute_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-test-database.sql:/docker-entrypoint-initdb.d/10-test-database.sql:ro
+
+volumes:
+  scholarroute_postgres_data:

@@ -1,0 +1,1 @@
+"""Pure ScholarRoute domain modules."""

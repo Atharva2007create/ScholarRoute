@@ -1,0 +1,1 @@
+"""Scholarship-matching domain boundary."""

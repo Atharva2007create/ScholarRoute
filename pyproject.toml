@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scholarroute"
+version = "0.1.0"
+description = "Structured college and scholarship recommendation platform foundation"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "alembic>=1.19,<2",
+  "fastapi>=0.141,<1",
+  "psycopg[binary]>=3.3,<4",
+  "pydantic-settings>=2.15,<3",
+  "sqlalchemy>=2.0.52,<2.1",
+  "uvicorn[standard]>=0.52,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1",
+  "mypy>=1.17,<2",
+  "pytest>=9.1,<10",
+  "pytest-cov>=7,<8",
+  "ruff>=0.15,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/scholarroute"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers -ra"
+testpaths = ["backend/tests"]
+markers = ["integration: requires the isolated ScholarRoute test PostgreSQL database"]
+
+[tool.coverage.run]
+branch = true
+source = ["scholarroute"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["backend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["scholarroute"]
+mypy_path = "backend"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "backend.tests.*"
+disallow_untyped_defs = false
+
