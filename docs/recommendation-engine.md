@@ -97,6 +97,25 @@ deterministic tie-break reason
 
 Run sensitivity tests so small input changes near thresholds do not cause unexplained large rank changes. A new policy version never alters the reproducibility of an old run.
 
+### Phase 5 scoring methodology
+
+All components return a bounded score from `0` to `1`; missing optional evidence returns the
+neutral score `0.5` and an explicit unavailable flag. Validated profile weights must be
+non-negative, use known component names, and sum exactly to `1`. Internal `Decimal` values decide
+ordering; presentation rounding never affects rank.
+
+College historical fit uses only cutoff observations matching program, category, quota, and
+gender pool. For each comparable observation it calculates `(closing_rank - student_rank) /
+closing_rank`, clamps that margin to `[-1, 1]`, maps it to `[0, 1]`, and combines years with weight
+`1 / (1 + age_in_years)`. Observation count, freshness, and closing-rank volatility determine
+evidence confidence. The resulting `SAFER`, `TARGET`, and `REACH` labels describe historical fit,
+not admission probability; no history produces `INSUFFICIENT_DATA`.
+
+College ties resolve by overall score, branch fit, historical fit, known/lower fee, canonical
+code, then stable identifier. Scholarship ties resolve by overall score, course relevance,
+benefit score, deadline relevance, canonical code, then stable identifier. Expired opportunities
+are explicitly recorded outside the active ranking. Phase 5 never changes Phase 4 eligibility.
+
 ## Explanation layer
 
 Generate a complete template explanation from trace data first. Optional Gemini input is a minimized JSON object containing only approved statements, such as passed requirements, preference matches, score factors, caveats, and source labels. Require structured output and verify that all claims map to supplied facts. On timeout, schema failure, or unsupported claims, return the template explanation.

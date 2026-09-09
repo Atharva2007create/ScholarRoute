@@ -46,6 +46,11 @@ from scholarroute.infrastructure.db.models.provenance import (
     StagedRecord,
     ValidationFinding,
 )
+from scholarroute.infrastructure.db.models.ranking import (
+    RankedRecommendation,
+    RankingProfileRecord,
+    RankingRun,
+)
 from scholarroute.infrastructure.db.models.scholarships import (
     ScholarshipBenefit,
     ScholarshipCycle,
@@ -90,6 +95,9 @@ __all__ = [
     "Program",
     "ProgramOffering",
     "QuotaType",
+    "RankedRecommendation",
+    "RankingProfileRecord",
+    "RankingRun",
     "ReleaseSourceVersion",
     "ResourceLink",
     "ScholarshipBenefit",

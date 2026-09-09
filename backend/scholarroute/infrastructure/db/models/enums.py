@@ -104,3 +104,8 @@ class RuleEvaluationStatus(StrEnum):
     MISSING = "MISSING"
     NOT_APPLICABLE = "NOT_APPLICABLE"
     CONFLICT = "CONFLICT"
+
+
+class RankingDomain(StrEnum):
+    COLLEGE = "COLLEGE"
+    SCHOLARSHIP = "SCHOLARSHIP"

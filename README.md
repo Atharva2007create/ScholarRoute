@@ -4,10 +4,10 @@ ScholarRoute is a structured college and scholarship recommendation platform for
 
 ## Current phase
 
-Phase 4 adds the deterministic, auditable three-state eligibility engine for programs and
-scholarships on top of the Phase 3 canonical catalog and ingestion foundation. Ranking,
-recommendation generation, authentication, Gemini, and recommendation screens remain out of
-scope.
+Phase 5 adds deterministic, versioned college/program and scholarship matching over Phase 4
+eligible results. It records normalized component scores, historical-competitiveness tiers,
+confidence, stable reasons, official links, and reproducible ranking audits. Public APIs,
+frontend work, Gemini, and AI-based scoring remain out of scope.
 
 ## Architecture
 
@@ -125,6 +125,8 @@ The first migration creates the foundational catalog and provenance schema. Phas
 canonical admission, scholarship, official-link, provenance, and staged-record structures.
 Phase 4 adds immutable eligibility input snapshots, evaluation audit records, per-rule traces,
 official-link associations, and the admission fields required by typed eligibility predicates.
+Phase 5 adds immutable ranking-profile versions, preference/profile snapshots, ranking runs, and
+component-level recommendation audit records.
 
 Run a bounded local structured-data import with:
 
