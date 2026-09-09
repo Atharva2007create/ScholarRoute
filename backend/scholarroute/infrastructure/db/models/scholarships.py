@@ -108,6 +108,7 @@ class ScholarshipEligibilityRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     achievement_minimum: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     achievement_unit: Mapped[str | None] = mapped_column(String(64))
     conditions_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    source_locator: Mapped[str | None] = mapped_column(String(500))
 
 
 class ScholarshipBenefit(UUIDPrimaryKeyMixin, TimestampMixin, Base):

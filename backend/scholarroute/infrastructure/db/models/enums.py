@@ -85,3 +85,22 @@ class ScholarshipStatus(StrEnum):
     CLOSED = "CLOSED"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
+
+
+class EligibilityStatus(StrEnum):
+    ELIGIBLE = "ELIGIBLE"
+    INELIGIBLE = "INELIGIBLE"
+    NEEDS_INFORMATION = "NEEDS_INFORMATION"
+
+
+class EligibilitySubjectType(StrEnum):
+    PROGRAM = "PROGRAM"
+    SCHOLARSHIP = "SCHOLARSHIP"
+
+
+class RuleEvaluationStatus(StrEnum):
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    MISSING = "MISSING"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    CONFLICT = "CONFLICT"

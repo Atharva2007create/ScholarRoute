@@ -29,6 +29,12 @@ from scholarroute.infrastructure.db.models.catalog import (
     State,
     Subject,
 )
+from scholarroute.infrastructure.db.models.eligibility import (
+    EligibilityEvaluation,
+    EligibilityEvaluationResourceLink,
+    EligibilityInputSnapshot,
+    EligibilityRuleResult,
+)
 from scholarroute.infrastructure.db.models.links import ResourceLink
 from scholarroute.infrastructure.db.models.provenance import (
     DataSource,
@@ -70,6 +76,10 @@ __all__ = [
     "CutoffObservation",
     "DataSource",
     "Degree",
+    "EligibilityEvaluation",
+    "EligibilityEvaluationResourceLink",
+    "EligibilityInputSnapshot",
+    "EligibilityRuleResult",
     "Exam",
     "ExamType",
     "FeeSchedule",

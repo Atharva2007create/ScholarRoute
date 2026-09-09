@@ -37,6 +37,16 @@ Evaluation order may short-circuit internally for performance, but the engine sh
 
 Historical cutoff position is not base eligibility unless the governing authority explicitly makes it one. A student outside a prior closing rank can still be shown as an eligible but lower-confidence/higher-reach option.
 
+### Phase 4 implementation boundary
+
+The implemented engine is a pure domain service over frozen, normalized student input and typed
+rules. It supports deterministic `AND`/`OR` groups, explicit null behavior, scope precedence,
+version-conflict detection, stable reason codes, and provenance for every evaluated predicate.
+The application service loads published program or scholarship rules, validates controlled
+references, creates a new immutable snapshot and audit record for every run, and associates stored
+official resource links. Historical cutoff observations are deliberately absent from the rule
+loader. Ranking and recommendation selection remain later-phase concerns.
+
 ## College matching
 
 1. Select offerings for the pinned admission cycle and requested course scope.

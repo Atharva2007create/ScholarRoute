@@ -426,6 +426,7 @@ def _publish_scholarship(
                 achievement_minimum=record.get("achievement_minimum") or None,
                 achievement_unit=record.get("achievement_unit") or None,
                 conditions_summary=record.get("conditions_summary", ""),
+                source_locator=record.get("source_locator"),
             )
         )
         session.add(

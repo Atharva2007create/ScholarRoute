@@ -4,7 +4,10 @@ ScholarRoute is a structured college and scholarship recommendation platform for
 
 ## Current phase
 
-Phase 2 establishes the backend, PostgreSQL schema, migrations, health endpoints, configuration, logging, development tooling, and tests. It does not contain recommendation logic, real admission data, ingestion connectors, authentication, Gemini, or recommendation screens.
+Phase 4 adds the deterministic, auditable three-state eligibility engine for programs and
+scholarships on top of the Phase 3 canonical catalog and ingestion foundation. Ranking,
+recommendation generation, authentication, Gemini, and recommendation screens remain out of
+scope.
 
 ## Architecture
 
@@ -118,7 +121,10 @@ pytest -m integration
 
 ## Baseline entities
 
-The first migration creates controlled references (`exams`, `boards`, `states`, `categories`, `institution_types`, `courses`, and `branches`), institutions/campuses/programs, counselling authorities and admission cycles, immutable catalog releases, official data sources, source documents and versions, ingestion runs, and release-to-source evidence links. The Phase 3 migration adds canonical admission, scholarship, official-link, provenance, and staged-record structures.
+The first migration creates the foundational catalog and provenance schema. Phase 3 adds
+canonical admission, scholarship, official-link, provenance, and staged-record structures.
+Phase 4 adds immutable eligibility input snapshots, evaluation audit records, per-rule traces,
+official-link associations, and the admission fields required by typed eligibility predicates.
 
 Run a bounded local structured-data import with:
 
