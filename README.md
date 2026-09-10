@@ -4,10 +4,9 @@ ScholarRoute is a structured college and scholarship recommendation platform for
 
 ## Current phase
 
-Phase 5 adds deterministic, versioned college/program and scholarship matching over Phase 4
-eligible results. It records normalized component scores, historical-competitiveness tiers,
-confidence, stable reasons, official links, and reproducible ranking audits. Public APIs,
-frontend work, Gemini, and AI-based scoring remain out of scope.
+Phase 6 exposes the canonical reference catalog, Phase 4 eligibility, and Phase 5 recommendations
+through a typed, versioned FastAPI REST layer. Frontend work, Gemini, and AI-based scoring remain
+out of scope. See [`docs/api-v1.md`](docs/api-v1.md) for the endpoint contract.
 
 ## Architecture
 

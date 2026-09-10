@@ -10,12 +10,17 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 
 from scholarroute import __version__
 from scholarroute.config import get_settings
 from scholarroute.entrypoints.api.routes.health import router as health_router
+from scholarroute.entrypoints.api.v1.eligibility import router as eligibility_router
+from scholarroute.entrypoints.api.v1.recommendations import router as recommendations_router
+from scholarroute.entrypoints.api.v1.reference import router as reference_router
 from scholarroute.errors import ApplicationError
 from scholarroute.logging import configure_logging
 
@@ -86,7 +91,17 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_allowed_origins),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-Request-ID"],
+    )
     app.include_router(health_router)
+    app.include_router(reference_router)
+    app.include_router(eligibility_router)
+    app.include_router(recommendations_router)
 
     @app.exception_handler(ApplicationError)
     async def handle_application_error(request: Request, exc: ApplicationError) -> JSONResponse:
@@ -127,6 +142,25 @@ def create_app() -> FastAPI:
             status_code=exc.status_code,
             code=code,
             message=message,
+        )
+
+    @app.exception_handler(SQLAlchemyError)
+    async def handle_database_error(request: Request, _: SQLAlchemyError) -> JSONResponse:
+        return _error_response(
+            request,
+            status_code=503,
+            code="DEPENDENCY_UNAVAILABLE",
+            message="A required data service is unavailable",
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, _: Exception) -> JSONResponse:
+        logger.exception("unhandled_request_error", extra={"request_id": request.state.request_id})
+        return _error_response(
+            request,
+            status_code=500,
+            code="INTERNAL_ERROR",
+            message="An unexpected error occurred",
         )
 
     return app

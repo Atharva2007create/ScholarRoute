@@ -8,7 +8,7 @@ from scholarroute.config import Settings, get_settings
 from scholarroute.entrypoints.api.schemas import HealthResponse
 from scholarroute.infrastructure.db.session import get_engine
 
-router = APIRouter(tags=["infrastructure"])
+router = APIRouter(tags=["System"])
 SettingsDependency = Annotated[Settings, Depends(get_settings)]
 
 
