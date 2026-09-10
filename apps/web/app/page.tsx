@@ -1,0 +1,5 @@
+import Image from "next/image";
+import { ShieldCheck } from "lucide-react";
+import { ActionCard, HowItWorks } from "@/components/home";
+
+export default function HomePage() { return <main><section className="home-hero"><Image className="hero-photo" src="/media/scholarroute-campus-hero.png" alt="A student walking toward an Indian university campus" fill priority sizes="100vw" /><div className="hero-wash" /><div className="page-shell hero-content"><div className="hero-copy"><p className="promise"><ShieldCheck size={15} aria-hidden="true" /> Your future, informed.</p><h1>Find the Right <span>College.</span><br />Discover the Right <em>Support.</em></h1><p>ScholarRoute helps students discover suitable colleges and scholarships based on their academic profile, eligibility, preferences and verified official information.</p><div className="action-grid"><ActionCard kind="college" /><ActionCard kind="scholarship" /></div></div><p className="hero-note" aria-hidden="true">Better choices.<br />Brighter futures.</p></div></section><div className="page-shell"><HowItWorks /></div></main>; }

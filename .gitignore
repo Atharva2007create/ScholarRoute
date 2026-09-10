@@ -16,6 +16,10 @@ __pycache__/
 htmlcov/
 dist/
 build/
+node_modules/
+.next/
+coverage/
+*.tsbuildinfo
 *.egg-info/
 *.db
 *.sqlite
