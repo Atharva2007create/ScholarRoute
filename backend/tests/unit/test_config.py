@@ -20,3 +20,20 @@ def test_settings_load_explicit_values_without_env_file() -> None:
 def test_settings_reject_invalid_pool_size() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, database_pool_size=0)
+
+
+def test_phase8_settings_support_safe_unprefixed_environment_names() -> None:
+    settings = Settings(
+        _env_file=None,
+        GEMINI_API_KEY="server-only-test-value",
+        GEMINI_MODEL="gemini-2.5-flash",
+        AI_ENABLED=True,
+        AI_TIMEOUT_SECONDS=12,
+        AI_MAX_RETRIES=1,
+    )
+
+    assert settings.ai_enabled is True
+    assert settings.gemini_model == "gemini-2.5-flash"
+    assert settings.ai_timeout_seconds == 12
+    assert settings.gemini_api_key is not None
+    assert str(settings.gemini_api_key) == "**********"

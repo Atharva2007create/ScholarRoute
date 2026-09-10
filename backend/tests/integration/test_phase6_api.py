@@ -1,14 +1,19 @@
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from scholarroute.application.ai.service import AIExplanationService
 from scholarroute.application.ingestion.contracts import SourceContext
 from scholarroute.application.ingestion.importers import JoSAAImporter, MCCImporter, NSPImporter
 from scholarroute.application.ingestion.service import run_ingestion
+from scholarroute.config import Settings
 from scholarroute.entrypoints.api.app import create_app
+from scholarroute.entrypoints.api.dependencies import SessionDependency
+from scholarroute.entrypoints.api.v1.ai import get_ai_explanation_service
 from scholarroute.infrastructure.db.models import (
     AdmissionRequirement,
     Exam,
@@ -262,3 +267,92 @@ def test_cors_is_restricted_to_configured_origin(client: TestClient) -> None:
     )
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+class _GroundedFakeProvider:
+    def generate(self, **values: Any) -> dict[str, object]:
+        prompt = str(values["prompt"])
+        return {
+            "summary": "This explanation uses the stored ScholarRoute result.",
+            "reasons": ["The deterministic result and its reason codes were supplied."],
+            "caveats": ["Official authorities remain the final source."],
+            "next_steps": [
+                "Provide missing information."
+                if "NEEDS_INFORMATION" in prompt
+                else "Review the official information attached by ScholarRoute."
+            ],
+        }
+
+
+def test_phase8_endpoints_use_persisted_authoritative_results(
+    client: TestClient, phase6_data: dict[str, str]
+) -> None:
+    config = Settings(_env_file=None, AI_ENABLED=True, GEMINI_API_KEY="test-only")
+
+    def override_service(session: SessionDependency) -> AIExplanationService:
+        return AIExplanationService(session, config, _GroundedFakeProvider())
+
+    client.app.dependency_overrides[get_ai_explanation_service] = override_service
+    try:
+        college = client.post(
+            "/api/v1/recommendations/colleges",
+            json={
+                "student": student(),
+                "preferences": {"preferred_branch_codes": ["CSE"]},
+                "limit": 1,
+            },
+        ).json()
+        college_ai = client.post(
+            "/api/v1/ai/explain/college",
+            json={
+                "ranking_run_id": college["meta"]["ranking_run_id"],
+                "rank_position": 1,
+            },
+        )
+        assert college_ai.status_code == 200, college_ai.text
+        assert college_ai.json()["authoritative"]["tier"] == college["results"][0]["tier"]
+        assert Decimal(college_ai.json()["authoritative"]["fit_score"]) == Decimal(
+            college["results"][0]["fit_score"]
+        )
+        assert college_ai.json()["official_links"] == college["results"][0]["official_links"]
+
+        scholarship = client.post(
+            "/api/v1/recommendations/scholarships",
+            json={
+                "student": {
+                    "evaluation_year": 2025,
+                    "class12_percentage": 75,
+                    "family_income": 500000,
+                }
+            },
+        ).json()
+        scholarship_ai = client.post(
+            "/api/v1/ai/explain/scholarship",
+            json={
+                "ranking_run_id": scholarship["meta"]["ranking_run_id"],
+                "rank_position": 1,
+            },
+        )
+        assert scholarship_ai.status_code == 200, scholarship_ai.text
+        assert scholarship_ai.json()["authoritative"]["tier"] == scholarship["results"][0]["tier"]
+        assert (
+            scholarship_ai.json()["official_links"] == scholarship["results"][0]["official_links"]
+        )
+
+        for marks, expected in ((75, "ELIGIBLE"), (50, "INELIGIBLE"), (None, "NEEDS_INFORMATION")):
+            eligibility = client.post(
+                "/api/v1/eligibility/evaluate",
+                json={
+                    "subject_type": "PROGRAM",
+                    "subject_id": phase6_data["program_id"],
+                    "student": student(class12_percentage=marks),
+                },
+            ).json()
+            explanation = client.post(
+                "/api/v1/ai/explain/eligibility",
+                json={"evaluation_id": eligibility["evaluation_id"]},
+            )
+            assert explanation.status_code == 200, explanation.text
+            assert explanation.json()["authoritative"]["eligibility_status"] == expected
+    finally:
+        client.app.dependency_overrides.clear()

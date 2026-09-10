@@ -18,6 +18,7 @@ from starlette.responses import Response
 from scholarroute import __version__
 from scholarroute.config import get_settings
 from scholarroute.entrypoints.api.routes.health import router as health_router
+from scholarroute.entrypoints.api.v1.ai import router as ai_router
 from scholarroute.entrypoints.api.v1.eligibility import router as eligibility_router
 from scholarroute.entrypoints.api.v1.recommendations import router as recommendations_router
 from scholarroute.entrypoints.api.v1.reference import router as reference_router
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(reference_router)
     app.include_router(eligibility_router)
     app.include_router(recommendations_router)
+    app.include_router(ai_router)
 
     @app.exception_handler(ApplicationError)
     async def handle_application_error(request: Request, exc: ApplicationError) -> JSONResponse:

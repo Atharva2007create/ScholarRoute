@@ -2,6 +2,10 @@
 
 ScholarRoute is a structured college and scholarship recommendation platform for Indian students. The product will use official, versioned data and deterministic eligibility rules. AI will never decide admission or scholarship eligibility.
 
+Phase 8 adds an optional, grounded Gemini explanation layer. See
+[`docs/phase-8-ai-explanations.md`](docs/phase-8-ai-explanations.md) for its server-only
+configuration, safety boundaries, and local validation steps.
+
 ## Current phase
 
 Phase 6 exposes the canonical reference catalog, Phase 4 eligibility, and Phase 5 recommendations

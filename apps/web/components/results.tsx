@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Building2, CalendarDays, CheckCircle2, CircleAlert, ExternalLink, GraduationCap, IndianRupee, Info, LoaderCircle, MapPin, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { ApiError, safeOfficialUrl } from "@/lib/api/client";
+import { explainRecommendation } from "@/lib/api/ai";
 import { getRecommendation, recommendColleges, recommendScholarships } from "@/lib/api/recommendations";
-import type { CollegeRequest, Recommendation, RecommendationDetail, ScholarshipRequest } from "@/lib/api/types";
+import type { AIExplanation, CollegeRequest, Recommendation, RecommendationDetail, ScholarshipRequest } from "@/lib/api/types";
 import { loadSearch, saveSearch, type StoredSearch } from "@/lib/search-session";
 import { fitPercent, humanize } from "@/lib/presentation";
 
@@ -68,8 +69,26 @@ function ResultCard({ item, kind, onDetails, index }: { item: Recommendation; ki
   </article>;
 }
 
-function DetailDialog({ detail, loading, onClose }: { detail: RecommendationDetail | null; loading: boolean; onClose: () => void }) {
-  return <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><aside className="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button autoFocus className="drawer-close" onClick={onClose} aria-label="Close details">×</button>{loading ? <div className="drawer-loading"><LoaderCircle className="spin" /> Loading evidence…</div> : detail && <><p className="eyebrow">Recommendation evidence</p><h2 id="detail-title">Why this match?</h2><p>{detail.result.summary}</p><h3>Match signals</h3><ul className="reason-list">{detail.result.reason_codes.map((reason) => <li key={reason}><CheckCircle2 />{humanize(reason)}</li>)}</ul><h3>Score components</h3><div className="component-list">{detail.result.components.map((component) => <div key={component.name}><span>{humanize(component.name)}</span><strong>{fitPercent(component.score)}%</strong><small>{component.evidence_available ? "Evidence available" : "Limited evidence"}</small></div>)}</div><h3>Official evidence</h3><OfficialLinks links={[...detail.result.official_links, ...detail.result.evidence.map((item) => item.official_url ?? "")]} scholarship={false} /></>}</aside></div>;
+function AIExplanationPanel({ detail, kind }: { detail: RecommendationDetail; kind: Kind }) {
+  const [explanation, setExplanation] = useState<AIExplanation | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  async function generate() {
+    if (loading) return;
+    setLoading(true); setError("");
+    try {
+      setExplanation(await explainRecommendation(kind === "colleges" ? "college" : "scholarship", detail.ranking_run_id, detail.result.rank_position));
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "AI explanation is temporarily unavailable. Your ScholarRoute recommendation is still valid.");
+    } finally { setLoading(false); }
+  }
+  if (!explanation) return <section className="ai-explanation"><div><p className="eyebrow"><Sparkles /> Gemini guidance</p><p>Get a concise explanation grounded only in this ScholarRoute result.</p></div>{error && <p className="ai-error" role="alert">{error}</p>}<button type="button" className="button secondary ai-trigger" onClick={generate} disabled={loading}>{loading ? <><LoaderCircle className="spin" /> Generating explanation…</> : <><Sparkles /> {error ? "Try explanation again" : "Explain this recommendation"}</>}</button></section>;
+  return <section className="ai-explanation ai-success"><p className="eyebrow"><Sparkles /> Gemini guidance</p><p>{explanation.explanation.summary}</p><h3>Why it fits</h3><ul>{explanation.explanation.reasons.map((item) => <li key={item}>{item}</li>)}</ul>{explanation.explanation.caveats.length > 0 && <><h3>Keep in mind</h3><ul>{explanation.explanation.caveats.map((item) => <li key={item}>{item}</li>)}</ul></>}<h3>Next steps</h3><ul>{explanation.explanation.next_steps.map((item) => <li key={item}>{item}</li>)}</ul><small>AI wording · Deterministic result unchanged · {explanation.model}</small></section>;
+}
+
+function DetailDialog({ detail, loading, kind, onClose }: { detail: RecommendationDetail | null; loading: boolean; kind: Kind; onClose: () => void }) {
+  const scholarship = kind === "scholarships";
+  return <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><aside className="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button autoFocus className="drawer-close" onClick={onClose} aria-label="Close details">×</button>{loading ? <div className="drawer-loading"><LoaderCircle className="spin" /> Loading evidence…</div> : detail && <><p className="eyebrow">Recommendation evidence</p><h2 id="detail-title">Why this match?</h2><p>{detail.result.summary}</p><h3>Match signals</h3><ul className="reason-list">{detail.result.reason_codes.map((reason) => <li key={reason}><CheckCircle2 />{humanize(reason)}</li>)}</ul><h3>Score components</h3><div className="component-list">{detail.result.components.map((component) => <div key={component.name}><span>{humanize(component.name)}</span><strong>{fitPercent(component.score)}%</strong><small>{component.evidence_available ? "Evidence available" : "Limited evidence"}</small></div>)}</div><AIExplanationPanel detail={detail} kind={kind} /><h3>Official evidence</h3><OfficialLinks links={[...detail.result.official_links, ...detail.result.evidence.map((item) => item.official_url ?? "")]} scholarship={scholarship} /></>}</aside></div>;
 }
 
 export function ResultsExplorer({ kind }: { kind: Kind }) {
@@ -124,6 +143,6 @@ export function ResultsExplorer({ kind }: { kind: Kind }) {
         {pages > 1 && <nav className="pagination" aria-label="Results pages"><button disabled={page <= 1 || loading} onClick={() => changePage(Math.max(0, response.meta.offset - response.meta.limit))}><ArrowLeft /> Previous</button><span>Page {page} of {pages}</span><button disabled={page >= pages || loading} onClick={() => changePage(response.meta.offset + response.meta.limit)}>Next <ArrowRight /></button></nav>}
       </>}
     </div>
-    {detail && <DetailDialog detail={detail} loading={detailLoading} onClose={() => setDetail(null)} />}
+    {detail && <DetailDialog detail={detail} loading={detailLoading} kind={kind} onClose={() => setDetail(null)} />}
   </main>;
 }

@@ -110,4 +110,26 @@ export type RecommendationPage = {
 };
 
 export type RecommendationDetail = { ranking_run_id: string; result: Recommendation };
+export type AIExplanation = {
+  explanation_type: "college" | "scholarship" | "eligibility";
+  model: string;
+  prompt_version: string;
+  explanation: {
+    summary: string;
+    reasons: string[];
+    caveats: string[];
+    next_steps: string[];
+  };
+  authoritative: {
+    recommendation_id: string | null;
+    eligibility_evaluation_id: string;
+    subject_id: string;
+    fit_score: string | null;
+    tier: string | null;
+    confidence: string | null;
+    eligibility_status: string;
+    ranking_profile_version: string | null;
+  };
+  official_links: string[];
+};
 export type ApiErrorBody = { error: { code: string; message: string; request_id: string; fields: { path: string; code: string }[] } };

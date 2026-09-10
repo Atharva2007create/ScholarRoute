@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +35,36 @@ class Settings(BaseSettings):
     )
     api_default_page_size: int = Field(default=20, ge=1, le=100)
     api_max_page_size: int = Field(default=100, ge=1, le=200)
+    gemini_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GEMINI_API_KEY", "SCHOLARROUTE_GEMINI_API_KEY"),
+    )
+    gemini_model: str = Field(
+        default="gemini-2.5-flash",
+        validation_alias=AliasChoices("GEMINI_MODEL", "SCHOLARROUTE_GEMINI_MODEL"),
+    )
+    ai_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("AI_ENABLED", "SCHOLARROUTE_AI_ENABLED"),
+    )
+    ai_timeout_seconds: int = Field(
+        default=15,
+        ge=1,
+        le=60,
+        validation_alias=AliasChoices("AI_TIMEOUT_SECONDS", "SCHOLARROUTE_AI_TIMEOUT_SECONDS"),
+    )
+    ai_max_retries: int = Field(
+        default=1,
+        ge=0,
+        le=3,
+        validation_alias=AliasChoices("AI_MAX_RETRIES", "SCHOLARROUTE_AI_MAX_RETRIES"),
+    )
+    ai_max_output_tokens: int = Field(
+        default=500,
+        ge=100,
+        le=2000,
+        validation_alias=AliasChoices("AI_MAX_OUTPUT_TOKENS", "SCHOLARROUTE_AI_MAX_OUTPUT_TOKENS"),
+    )
 
 
 @lru_cache

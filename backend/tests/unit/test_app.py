@@ -23,3 +23,12 @@ def test_liveness_health_endpoint() -> None:
         "environment": "development",
         "database": None,
     }
+
+
+def test_phase8_routes_are_exposed_without_secret_configuration() -> None:
+    schema = create_app().openapi()
+
+    assert "/api/v1/ai/explain/college" in schema["paths"]
+    assert "/api/v1/ai/explain/scholarship" in schema["paths"]
+    assert "/api/v1/ai/explain/eligibility" in schema["paths"]
+    assert "GEMINI_API_KEY" not in str(schema)
