@@ -47,6 +47,16 @@ test("forms use references, dependent branches and both clients", async () => {
   assert.match(form, /recommendColleges/); assert.match(form, /recommendScholarships/);
 });
 
+test("forms omit board and scholarship state preference while preserving domicile", async () => {
+  const form = await source("components/search-form.tsx");
+  const references = await source("lib/api/references.ts");
+  assert.doesNotMatch(form, /label="Board"|board_code:/);
+  assert.doesNotMatch(references, /"boards"/);
+  assert.match(form, /label="State of domicile"/);
+  assert.match(form, /\{college && <SelectField label="Preferred state"/);
+  assert.doesNotMatch(form, /ScholarshipRequest = \{[^\n]*preferred_state_codes/);
+});
+
 test("results preserve link safety, pagination and needs-information", async () => {
   const results = await source("components/results.tsx");
   assert.match(results, /rel="noopener noreferrer"/); assert.match(results, /needs_information/);

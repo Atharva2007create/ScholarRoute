@@ -45,7 +45,6 @@ export type ScholarshipRequest = {
   student: StudentInput;
   preferences: {
     preferred_benefit_types: string[];
-    preferred_state_codes: string[];
     institution_type_code?: string;
   };
   preset: "BALANCED";

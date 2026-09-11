@@ -47,9 +47,10 @@ export function SearchForm({ kind }: { kind: Kind }) {
         return { preset: request.preset, branch_code: request.branch_code ?? request.preferences.preferred_branch_codes[0] ?? "", preferred_state_code: request.state_code ?? request.preferences.preferred_state_codes[0] ?? "", institution_type_code: request.institution_type_code ?? request.preferences.preferred_institution_type_codes[0] ?? "", maximum_annual_budget: request.preferences.maximum_annual_budget ? String(request.preferences.maximum_annual_budget) : "" };
       })() : (() => {
         const request = stored.request as ScholarshipRequest;
-        return { preferred_state_code: request.preferences.preferred_state_codes[0] ?? "", institution_type_code: request.preferences.institution_type_code ?? "" };
+        return { institution_type_code: request.preferences.institution_type_code ?? "" };
       })();
-      queueMicrotask(() => setValues((current) => ({ ...current, ...Object.fromEntries(Object.entries(student).map(([key, value]) => [key, typeof value === "boolean" ? value : String(value ?? "")])), ...preferenceValues })));
+      const studentValues = Object.fromEntries(Object.entries(student).filter(([key]) => key !== "board_code").map(([key, value]) => [key, typeof value === "boolean" ? value : String(value ?? "")]));
+      queueMicrotask(() => setValues((current) => ({ ...current, ...studentValues, ...preferenceValues })));
     }
     Promise.all(referenceResources.map(async (resource) => [resource, (await getReference(resource)).results] as const))
       .then((entries) => {
@@ -86,7 +87,7 @@ export function SearchForm({ kind }: { kind: Kind }) {
       exam_rank: cleanNumber(values.exam_rank), exam_score: cleanNumber(values.exam_score), exam_percentile: cleanNumber(values.exam_percentile),
       category_code: values.category_code as string || undefined, quota_code: values.quota_code as string || undefined,
       gender_pool_code: values.gender_pool_code as string || undefined, domicile_state_code: values.domicile_state_code as string || undefined,
-      board_code: values.board_code as string || undefined, class12_percentage: cleanNumber(values.class12_percentage), family_income: cleanNumber(values.family_income),
+      class12_percentage: cleanNumber(values.class12_percentage), family_income: cleanNumber(values.family_income),
       target_course_code: values.target_course_code as string || undefined, institution_type_code: values.institution_type_code as string || undefined,
       is_pwd: Boolean(values.is_pwd), is_ews: Boolean(values.is_ews),
     };
@@ -96,7 +97,7 @@ export function SearchForm({ kind }: { kind: Kind }) {
         const response = await recommendColleges(request);
         saveSearch("colleges", { request, response, labels: display });
       } else {
-        const request: ScholarshipRequest = { student, preferences: { preferred_benefit_types: [], preferred_state_codes: one(values.preferred_state_code), institution_type_code: values.institution_type_code as string || undefined }, preset: "BALANCED", limit: 10, offset: 0 };
+        const request: ScholarshipRequest = { student, preferences: { preferred_benefit_types: [], institution_type_code: values.institution_type_code as string || undefined }, preset: "BALANCED", limit: 10, offset: 0 };
         const response = await recommendScholarships(request);
         saveSearch("scholarships", { request, response, labels: display });
       }
@@ -111,7 +112,6 @@ export function SearchForm({ kind }: { kind: Kind }) {
       <SelectField label={college ? "Admission year" : "Academic year"} name="evaluation_year" value={String(values.evaluation_year ?? "")} options={options("admission-years")} required onChange={update} />
       <SelectField label="Exam" name="exam_code" value={String(values.exam_code ?? "")} options={options("exams")} required={college} onChange={update} />
       {college && <><Field label="Rank / CRL" name="exam_rank" type="number" min={1} value={String(values.exam_rank ?? "")} placeholder="e.g. 12500" onChange={update} /><Field label="Score" name="exam_score" type="number" min={0} value={String(values.exam_score ?? "")} placeholder="Exam score" onChange={update} /><Field label="Percentile" name="exam_percentile" type="number" min={0} max={100} value={String(values.exam_percentile ?? "")} placeholder="0–100" onChange={update} /></>}
-      <SelectField label="Board" name="board_code" value={String(values.board_code ?? "")} options={options("boards")} onChange={update} />
       <Field label="Class 12 percentage" name="class12_percentage" type="number" min={0} max={100} value={String(values.class12_percentage ?? "")} placeholder="0–100" onChange={update} />
     </FormSection>
     <FormSection number={2} icon={UserRound} title="Personal & eligibility details" helper="Information used only where official rules require it.">
@@ -125,7 +125,7 @@ export function SearchForm({ kind }: { kind: Kind }) {
     <FormSection number={3} icon={SlidersHorizontal} title={college ? "Preferences" : "Scholarship preferences"} helper="Optional choices help rank eligible matches around your priorities.">
       <SelectField label="Course" name="target_course_code" value={String(values.target_course_code ?? "")} options={options("courses")} onChange={update} />
       {college && <SelectField label="Preferred branch" name="branch_code" value={String(values.branch_code ?? "")} options={branches} disabled={!values.target_course_code} placeholder={values.target_course_code ? "Any branch" : "Choose a course first"} onChange={update} />}
-      <SelectField label="Preferred state" name="preferred_state_code" value={String(values.preferred_state_code ?? "")} options={options("states")} placeholder="Any state" onChange={update} />
+      {college && <SelectField label="Preferred state" name="preferred_state_code" value={String(values.preferred_state_code ?? "")} options={options("states")} placeholder="Any state" onChange={update} />}
       <SelectField label="Institution type" name="institution_type_code" value={String(values.institution_type_code ?? "")} options={options("institution-types")} placeholder="Any institution type" onChange={update} />
       {college && <><Field label="Maximum annual budget (₹)" name="maximum_annual_budget" type="number" min={0} value={String(values.maximum_annual_budget ?? "")} placeholder="No limit" onChange={update} /><label className="field"><span>Ranking priority</span><select value={String(values.preset)} onChange={(event) => update("preset", event.target.value)}><option value="BALANCED">Balanced match</option><option value="BRANCH_FIRST">Branch first</option><option value="BUDGET_FIRST">Budget first</option><option value="LOCATION_FIRST">Location first</option></select></label></>}
     </FormSection>
