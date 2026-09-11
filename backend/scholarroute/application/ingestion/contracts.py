@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+from uuid import UUID
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class IngestionSummary:
     rejected: int
     published: int
     duplicate: bool = False
+    run_id: UUID | None = None
 
 
 class Importer(Protocol):

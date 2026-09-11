@@ -16,10 +16,12 @@ from scholarroute.application.ingestion.contracts import (
     SourceContext,
 )
 from scholarroute.application.ingestion.lifecycle import transition
+from scholarroute.application.ingestion.normalization import normalize_quota
 from scholarroute.application.ingestion.reference_data import load_reference_data
 from scholarroute.infrastructure.db.models import (
     AcademicYear,
     AdmissionCycle,
+    AdmissionRequirement,
     Branch,
     Category,
     CounsellingAuthority,
@@ -39,6 +41,7 @@ from scholarroute.infrastructure.db.models import (
     ScholarshipBenefit,
     ScholarshipCycle,
     ScholarshipEligibilityRule,
+    ScholarshipEligibleCategory,
     ScholarshipProvider,
     ScholarshipScheme,
     SeatMatrixEntry,
@@ -105,6 +108,7 @@ def _ensure_source(
         )
         session.add(authority)
         session.flush()
+    is_production = "production" in {part.lower() for part in path.parts}
     source = _one_by(session, DataSource, canonical_url=context.source_url)
     if source is None:
         source = DataSource(
@@ -113,7 +117,9 @@ def _ensure_source(
             canonical_url=context.source_url,
             source_type=DataSourceType.DATASET,
             trust_tier=1,
-            retrieval_policy={"mode": "manual_official_fixture"},
+            retrieval_policy={
+                "mode": "official_source_pipeline" if is_production else "manual_official_fixture"
+            },
         )
         session.add(source)
         session.flush()
@@ -143,9 +149,17 @@ def _ensure_source(
             document_id=document.id,
             content_hash=checksum,
             retrieved_at=datetime.now(UTC),
-            storage_uri=f"fixture://{checksum}/{path.name}",
+            storage_uri=(
+                f"production://{checksum}/{path.name}"
+                if is_production
+                else f"fixture://{checksum}/{path.name}"
+            ),
             parser_version=context.importer_version,
-            http_metadata={"source_url": context.source_url, "local_fixture": True},
+            http_metadata={
+                "source_url": context.source_url,
+                "local_fixture": not is_production,
+                "production_source": is_production,
+            },
         )
         session.add(version)
         session.flush()
@@ -268,7 +282,7 @@ def _publish_admission(
         )
         session.add(round_)
         session.flush()
-    quota = _reference(session, QuotaType, str(record["quota_code"]))
+    quota = _reference(session, QuotaType, normalize_quota(record["quota_code"]))
     category = _reference(session, Category, str(record["category_code"]))
     gender = _reference(session, GenderPool, str(record["gender_pool_code"]))
     seat_type = _reference(session, SeatType, str(record.get("seat_type_code", "REGULAR")))
@@ -315,8 +329,11 @@ def _publish_admission(
         )
         session.add(cutoff)
         session.flush()
+    seat_key = (offering.id, round_.id, source_version.id)
+    pending_seat_keys = session.info.setdefault("ingestion_seat_keys", set())
     if (
-        _one_by(
+        seat_key not in pending_seat_keys
+        and _one_by(
             session,
             SeatMatrixEntry,
             offering_id=offering.id,
@@ -334,6 +351,7 @@ def _publish_admission(
                 source_locator=record["source_locator"],
             )
         )
+    pending_seat_keys.add(seat_key)
     for entity_type, entity_id, link_type, url in (
         (
             ResourceEntityType.INSTITUTION,
@@ -364,6 +382,32 @@ def _publish_admission(
             academic_year=year,
             source_version_id=source_version.id,
         )
+    if record.get("admission_requirement_summary"):
+        requirement_code = f"{authority.code}_{record['exam_code']}_{record['program_code']}"[:64]
+        rule_version = f"{year}.official-route"
+        if (
+            _one_by(
+                session,
+                AdmissionRequirement,
+                code=requirement_code,
+                academic_year=year,
+                program_id=program.id,
+                rule_version=rule_version,
+            )
+            is None
+        ):
+            session.add(
+                AdmissionRequirement(
+                    code=requirement_code,
+                    academic_year=year,
+                    exam_id=exam.id,
+                    program_id=program.id,
+                    rule_version=rule_version,
+                    summary=record["admission_requirement_summary"],
+                    source_locator=record["source_locator"],
+                    source_document_version_id=source_version.id,
+                )
+            )
     return cutoff.id
 
 
@@ -454,6 +498,18 @@ def _publish_scholarship(
             academic_year=year,
             source_version_id=source_version.id,
         )
+    for category_code in record.get("eligible_category_codes", []):
+        category = _reference(session, Category, str(category_code))
+        if (
+            _one_by(
+                session,
+                ScholarshipEligibleCategory,
+                cycle_id=cycle.id,
+                category_id=category.id,
+            )
+            is None
+        ):
+            session.add(ScholarshipEligibleCategory(cycle_id=cycle.id, category_id=category.id))
     return cycle.id
 
 
@@ -463,6 +519,7 @@ def run_ingestion(
     importer: Importer,
     path: Path,
     context: SourceContext,
+    publish: bool = True,
 ) -> IngestionSummary:
     content = path.read_bytes()
     checksum = hashlib.sha256(content).hexdigest()
@@ -476,6 +533,7 @@ def run_ingestion(
             rejected=existing.records_rejected,
             published=existing.records_published,
             duplicate=True,
+            run_id=existing.id,
         )
 
     load_reference_data(session)
@@ -544,19 +602,22 @@ def run_ingestion(
             continue
         staged.status = transition(staged.status, StagedRecordStatus.VALIDATED)
         run.records_validated += 1
-        entity_id = (
-            _publish_admission(session, normalized, authority, source_version)
-            if importer.kind == "admission"
-            else _publish_scholarship(session, normalized, authority, source_version)
-        )
-        staged.published_entity_id = entity_id
-        staged.status = transition(staged.status, StagedRecordStatus.PUBLISHED)
-        run.records_published += 1
+        if publish:
+            entity_id = (
+                _publish_admission(session, normalized, authority, source_version)
+                if importer.kind == "admission"
+                else _publish_scholarship(session, normalized, authority, source_version)
+            )
+            staged.published_entity_id = entity_id
+            staged.status = transition(staged.status, StagedRecordStatus.PUBLISHED)
+            run.records_published += 1
 
     run.completed_at = datetime.now(UTC)
     run.status = (
         IngestionRunStatus.PUBLISHED
         if run.records_published
+        else IngestionRunStatus.REVIEW_REQUIRED
+        if run.records_validated
         else IngestionRunStatus.VALIDATION_FAILED
     )
     run.metrics = {
@@ -572,4 +633,68 @@ def run_ingestion(
         validated=run.records_validated,
         rejected=run.records_rejected,
         published=run.records_published,
+        run_id=run.id,
+    )
+
+
+def promote_ingestion_run(session: Session, run_id: UUID) -> IngestionSummary:
+    run = session.get(IngestionRun, run_id)
+    if run is None:
+        raise ValueError(f"Ingestion run not found: {run_id}")
+    if run.status is IngestionRunStatus.PUBLISHED:
+        return IngestionSummary(
+            source=run.data_source.authority_name,
+            parsed=run.records_parsed,
+            validated=run.records_validated,
+            rejected=run.records_rejected,
+            published=run.records_published,
+            duplicate=True,
+            run_id=run.id,
+        )
+    if run.status is not IngestionRunStatus.REVIEW_REQUIRED:
+        raise ValueError(f"Ingestion run is not ready for promotion: {run.status}")
+    source = session.get(DataSource, run.data_source_id)
+    source_version = (
+        session.get(SourceDocumentVersion, run.source_document_version_id)
+        if run.source_document_version_id
+        else None
+    )
+    if source is None or source.authority_id is None or source_version is None:
+        raise ValueError("Ingestion run is missing source provenance")
+    authority = session.get(SourceAuthority, source.authority_id)
+    if authority is None:
+        raise ValueError("Ingestion run source authority not found")
+    staged_records = list(
+        session.scalars(
+            select(StagedRecord).where(
+                StagedRecord.ingestion_run_id == run.id,
+                StagedRecord.status == StagedRecordStatus.VALIDATED,
+            )
+        )
+    )
+    for staged in staged_records:
+        if staged.normalized_payload is None:
+            raise ValueError(f"Validated staged record has no normalized payload: {staged.id}")
+        entity_id = (
+            _publish_admission(session, staged.normalized_payload, authority, source_version)
+            if staged.entity_type == "admission"
+            else _publish_scholarship(session, staged.normalized_payload, authority, source_version)
+        )
+        staged.published_entity_id = entity_id
+        staged.status = transition(staged.status, StagedRecordStatus.PUBLISHED)
+        run.records_published += 1
+    run.completed_at = datetime.now(UTC)
+    run.status = IngestionRunStatus.PUBLISHED
+    run.metrics = {
+        **run.metrics,
+        "published": run.records_published,
+        "promoted_at": run.completed_at.isoformat(),
+    }
+    return IngestionSummary(
+        source=source.authority_name,
+        parsed=run.records_parsed,
+        validated=run.records_validated,
+        rejected=run.records_rejected,
+        published=run.records_published,
+        run_id=run.id,
     )

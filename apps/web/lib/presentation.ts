@@ -1,6 +1,6 @@
 export function fitPercent(score: string) {
   const value = Number(score);
-  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value * 1000) / 10)) : 0;
 }
 
 export function humanize(value: string) {

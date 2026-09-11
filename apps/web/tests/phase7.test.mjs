@@ -31,8 +31,9 @@ test("API client converts the Phase 6 error envelope", async () => {
   finally { globalThis.fetch = original; }
 });
 
-test("fit scores are bounded match values", () => {
-  assert.equal(fitPercent("92.4"), 92); assert.equal(fitPercent("130"), 100); assert.equal(fitPercent("invalid"), 0);
+test("fit scores are bounded one-decimal match values", () => {
+  assert.equal(fitPercent("0.924"), 92.4); assert.equal(fitPercent("1.3"), 100); assert.equal(fitPercent("invalid"), 0);
+  assert.equal(fitPercent("0.644335"), 64.4); assert.equal(fitPercent("0.641122"), 64.1); assert.equal(fitPercent("0.644335"), fitPercent("0.644335"));
   assert.equal(humanize("HIGH_CONFIDENCE"), "High Confidence");
 });
 
@@ -97,6 +98,14 @@ test("results preserve link safety, pagination and needs-information", async () 
   assert.match(results, /rel="noopener noreferrer"/); assert.match(results, /needs_information/);
   assert.match(results, /Page \{page\} of \{pages\}/); assert.doesNotMatch(results, /chance of admission/i);
   assert.match(results, /media_verified_at/); assert.match(results, /onError=\{\(\) => setFailed\(true\)\}/);
+});
+
+test("cards, details and AI explanations remain recommendation-specific", async () => {
+  const results = await source("components/results.tsx");
+  assert.match(results, /<MatchBadge item=\{item\}/);
+  assert.match(results, /onDetails=\{\(\) => showDetails\(item\)\}/);
+  assert.match(results, /getRecommendation\(response\.meta\.ranking_run_id, item\.rank_position\)/);
+  assert.match(results, /explainRecommendation\(kind === "colleges" \? "college" : "scholarship", detail\.ranking_run_id, detail\.result\.rank_position\)/);
 });
 
 test("responsive and reduced-motion safeguards are defined", async () => {

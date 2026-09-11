@@ -29,6 +29,8 @@ pgdata/
 .postgres/
 postgres-data/
 secrets/
+data/production/raw/
+data/production/prepared/
 *.key
 *.pem
 *.p12
