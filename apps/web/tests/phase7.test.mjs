@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { api, ApiError, safeOfficialUrl } from "../lib/api/client.ts";
+import { branchOptionsForExam, courseCodeForExam, engineeringBranches, genderOptions, genderPoolCodeForGender } from "../lib/form-taxonomy.ts";
 import { fitPercent, humanize } from "../lib/presentation.ts";
 
 const source = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -41,10 +42,37 @@ test("home exposes both journeys and no sample recommendations", async () => {
   assert.doesNotMatch(content, /IIT Delhi|Aarav Sharma|NIT Trichy/);
 });
 
-test("forms use references, dependent branches and both clients", async () => {
+test("forms use references, dependent taxonomy and both clients", async () => {
   const form = await source("components/search-form.tsx");
-  assert.match(form, /getReference/); assert.match(form, /getBranches/);
+  assert.match(form, /getReference/); assert.match(form, /branchOptionsForExam/);
   assert.match(form, /recommendColleges/); assert.match(form, /recommendScholarships/);
+});
+
+test("exam controls score, course and branch state", async () => {
+  const form = await source("components/search-form.tsx");
+  assert.match(form, /examCode !== "JEE_MAIN" && <Field label="Score"/);
+  assert.match(form, /target_course_code: courseCodeForExam\(String\(value\)\), branch_code: "", exam_score: value === "JEE_MAIN" \? ""/);
+  assert.match(form, /disabled placeholder=\{examCode \? "Course set by exam" : "Select an exam first"\}/);
+  assert.equal(courseCodeForExam("JEE_MAIN"), "BTECH");
+  assert.equal(courseCodeForExam("NEET_UG"), "MBBS");
+  assert.deepEqual(branchOptionsForExam("NEET_UG"), []);
+});
+
+test("engineering taxonomy is comprehensive, stable and excludes medical specialties", () => {
+  const names = new Set(engineeringBranches.map((branch) => branch.name));
+  for (const name of ["Computer Science and Engineering", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering", "Electronics and Communication Engineering", "Artificial Intelligence and Machine Learning", "Aerospace Engineering", "Mathematics and Computing"]) assert.equal(names.has(name), true);
+  assert.equal(engineeringBranches.length >= 55, true);
+  assert.equal(new Set(engineeringBranches.map((branch) => branch.code)).size, engineeringBranches.length);
+  for (const specialty of ["Cardiology", "Neurology", "Orthopaedics", "Dermatology", "General Surgery"]) assert.equal(names.has(specialty), false);
+});
+
+test("student gender has exactly four choices and derives hidden admission pools", async () => {
+  const form = await source("components/search-form.tsx");
+  assert.deepEqual(genderOptions.map(({ code, name }) => [code, name]), [["MALE", "Male"], ["FEMALE", "Female"], ["NON_BINARY", "Non-binary"], ["PREFER_NOT_TO_SAY", "Rather not say"]]);
+  assert.equal(genderPoolCodeForGender("FEMALE"), "FEMALE_ONLY");
+  assert.equal(genderPoolCodeForGender("MALE"), "GENDER_NEUTRAL");
+  assert.match(form, /label="Gender" name="gender_code"/);
+  assert.doesNotMatch(form, /label="Gender pool"|name="gender_pool_code"/);
 });
 
 test("forms omit board and scholarship state preference while preserving domicile", async () => {
@@ -55,6 +83,13 @@ test("forms omit board and scholarship state preference while preserving domicil
   assert.match(form, /label="State of domicile"/);
   assert.match(form, /\{college && <SelectField label="Preferred state"/);
   assert.doesNotMatch(form, /ScholarshipRequest = \{[^\n]*preferred_state_codes/);
+});
+
+test("college percentile is a decimal text input with bounded validation", async () => {
+  const form = await source("components/search-form.tsx");
+  assert.match(form, /label="Percentile" name="exam_percentile" inputMode="decimal" pattern=/);
+  assert.doesNotMatch(form, /label="Percentile" name="exam_percentile" type="number"/);
+  assert.match(form, /exam_percentile: cleanNumber\(values\.exam_percentile\)/);
 });
 
 test("results preserve link safety, pagination and needs-information", async () => {
