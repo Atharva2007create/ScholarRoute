@@ -124,6 +124,12 @@ class RecommendationResponse(BaseModel):
     annual_fee: Decimal | None = None
     benefit_amount: Decimal | None = None
     deadline: date | None = None
+    institution_logo_url: str | None = None
+    campus_image_url: str | None = None
+    provider_logo_url: str | None = None
+    scheme_logo_url: str | None = None
+    media_source_url: str | None = None
+    media_verified_at: datetime | None = None
 
 
 class RecommendationMeta(PageMeta):

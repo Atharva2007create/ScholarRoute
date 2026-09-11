@@ -5,6 +5,10 @@ from fastapi import APIRouter
 from sqlalchemy import select
 
 from scholarroute.application.discovery.service import DiscoveryResult, DiscoveryService
+from scholarroute.application.media.service import (
+    media_for_college_programs,
+    media_for_scholarships,
+)
 from scholarroute.entrypoints.api.dependencies import SessionDependency
 from scholarroute.entrypoints.api.v1.schemas import (
     CollegeRecommendationRequest,
@@ -58,11 +62,22 @@ def _map_result(item: Any, detail: dict[str, Any] | None = None) -> Recommendati
     )
 
 
-def _page(discovery: DiscoveryResult, limit: int, offset: int) -> RecommendationPage:
+def _page(
+    discovery: DiscoveryResult,
+    limit: int,
+    offset: int,
+    media: dict[UUID, dict[str, Any]],
+) -> RecommendationPage:
     outcome = discovery.ranking.outcome
     selected = outcome.ranked[offset : offset + limit]
     return RecommendationPage(
-        results=[_map_result(item, discovery.details.get(item.subject_id)) for item in selected],
+        results=[
+            _map_result(
+                item,
+                {**discovery.details.get(item.subject_id, {}), **media.get(item.subject_id, {})},
+            )
+            for item in selected
+        ],
         meta=RecommendationMeta(
             total=len(outcome.ranked),
             limit=limit,
@@ -98,7 +113,10 @@ def colleges(
         )
     except ValueError as exc:
         raise ApplicationError("INVALID_STUDENT_INPUT", str(exc), 422) from exc
-    return _page(result, request.limit, request.offset)
+    media = media_for_college_programs(
+        session, (item.subject_id for item in result.ranking.outcome.ranked)
+    )
+    return _page(result, request.limit, request.offset, media)
 
 
 @router.post(
@@ -119,7 +137,10 @@ def scholarships(
         )
     except ValueError as exc:
         raise ApplicationError("INVALID_STUDENT_INPUT", str(exc), 422) from exc
-    return _page(result, request.limit, request.offset)
+    media = media_for_scholarships(
+        session, (item.subject_id for item in result.ranking.outcome.ranked)
+    )
+    return _page(result, request.limit, request.offset, media)
 
 
 @router.get(
@@ -140,6 +161,10 @@ def detail(run_id: UUID, position: int, session: SessionDependency) -> Recommend
     if row is None:
         raise ApplicationError("RESOURCE_NOT_FOUND", "Recommendation result not found", 404)
     record, run = row
+    if run.domain == "COLLEGE":
+        media = media_for_college_programs(session, (record.subject_id,))
+    else:
+        media = media_for_scholarships(session, (record.subject_id,))
     result = RecommendationResponse(
         subject_id=record.subject_id,
         eligibility_evaluation_id=record.eligibility_evaluation_id,
@@ -162,5 +187,6 @@ def detail(run_id: UUID, position: int, session: SessionDependency) -> Recommend
         official_links=record.official_links,
         evidence=[EvidenceResponse(**item) for item in record.evidence],
         ranking_profile_version=str(run.ranking_profile_snapshot["version"]),
+        **media.get(record.subject_id, {}),
     )
     return RecommendationDetail(ranking_run_id=run_id, result=result)

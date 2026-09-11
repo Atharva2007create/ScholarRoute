@@ -9,6 +9,7 @@ import { getRecommendation, recommendColleges, recommendScholarships } from "@/l
 import type { AIExplanation, CollegeRequest, Recommendation, RecommendationDetail, ScholarshipRequest } from "@/lib/api/types";
 import { loadSearch, saveSearch, type StoredSearch } from "@/lib/search-session";
 import { fitPercent, humanize } from "@/lib/presentation";
+import { selectResultMedia } from "@/lib/media";
 
 type Kind = "colleges" | "scholarships";
 const money = (value: string | null) => value ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(value)) : null;
@@ -34,14 +35,13 @@ function MediaFallback({ item, scholarship }: { item: Recommendation; scholarshi
 
 function ResultMedia({ item, scholarship }: { item: Recommendation; scholarship: boolean }) {
   const [failed, setFailed] = useState(false);
-  const candidate = scholarship ? item.provider_logo_url ?? item.scheme_logo_url : item.campus_image_url ?? item.institution_logo_url;
-  const url = item.media_verified_at ? safeOfficialUrl(candidate) : null;
-  if (!url || failed) return <MediaFallback item={item} scholarship={scholarship} />;
+  const media = item.media_verified_at ? selectResultMedia(item, scholarship) : null;
+  if (!media || failed) return <MediaFallback item={item} scholarship={scholarship} />;
   const name = item.organization ?? item.title ?? (scholarship ? "Scholarship provider" : "Institution");
   // Dynamic media comes only from backend-verified provenance, so a native image
   // avoids an unsafe wildcard in Next.js remote image configuration.
   // eslint-disable-next-line @next/next/no-img-element
-  return <img className={`result-media ${scholarship ? "logo" : "campus"}`} src={url} alt={`${name} ${scholarship ? "logo" : "campus"}`} loading="lazy" width="224" height="188" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
+  return <img className={`result-media ${media.kind}`} src={media.url} alt={`${name} ${media.kind}`} loading="lazy" width="224" height="188" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
 }
 
 function OfficialLinks({ links, scholarship }: { links: string[]; scholarship: boolean }) {
